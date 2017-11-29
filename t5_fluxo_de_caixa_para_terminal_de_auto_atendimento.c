@@ -1,4 +1,4 @@
-//114+113
+//114+113+51+138+80
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -11,10 +11,16 @@ typedef struct _ll{
 	struct _ll *n;//proxima celula
 }ll;
 
-typedef struct _b{
-	int id;
+typedef struct _s{
+	int id, qt;
 	float mp, mn, tp, tn;
-}bank;
+}sum;
+
+typedef struct _e{
+	int S, D, C, T;
+}err;
+
+void accsum(ll **, sum *, int, err *);
 
 void clearll(ll *a){
 	a->t = 0;
@@ -26,8 +32,9 @@ void clearll(ll *a){
 	a->n = NULL;
 }
 
-void clearbank(bank *b){
+void clearsum(sum *b){
 	b->id = 0;
+	b->qt = 0;
 	b->mp = 0;
 	b->mn = 0;
 	b->tp = 0;
@@ -35,7 +42,7 @@ void clearbank(bank *b){
 }
 
 int hashmap(char o, int t){
-	return 5*t-4+((o == 'S') ? 0 : ((o == 'D') ? 1 : ((o == 'C') ? 2 : ((o == 'T') ? 3 : ((o == 'A') ? 4 : -1)))));
+	return 5*t-5+((o == 'S') ? 0 : ((o == 'D') ? 1 : ((o == 'C') ? 2 : ((o == 'T') ? 3 : ((o == 'A') ? 4 : -1)))));
 }
 
 void insertHASH(ll **hash, ll *in){
@@ -63,7 +70,7 @@ void insertHASH(ll **hash, ll *in){
 
 void printH(ll **hash){
 	int i = 0;
-	for(; i < 21; i++){
+	for(; i < 20; i++){
 		ll *aux = hash[i];
 		while(aux){
 			printf("|%p|\t%d\t%3d\t%c\t%3d\t%8.2f\t%d\t%9p | %02d\n", (void *)aux, aux->t, aux->b, aux->o, aux->d, aux->v, (int)aux->e, (void*)aux->n, hashmap(aux->o, aux->t));
@@ -72,16 +79,31 @@ void printH(ll **hash){
 	}
 }
 
-int main(){
+void freeHash(ll **h, sum *bank){
 	int i = 0;
+	ll *a = NULL, *b = NULL;
+	for(i = 0; i < 20; i++){
+		a = h[i];
+		while(a){
+			b = a->n;
+			free(a);
+			a = b;
+		}
+	}
+	free(h);
+	free(bank);
+}
+
+int main(){
+	int i = 0, j = 0, k = 0;
 	char c = 0, buffer[100] = {0};
 	float f = 0;
 	ll reader, **hash = NULL;
-	hash = (ll **)malloc(sizeof(ll *)*21);
-	bank *sum = NULL;
-	sum = (bank *)malloc(sizeof(bank)*4);
-	for(i = 0; i < 21; i++) hash[i] = NULL;
-	for(i = 0; i < 4; i++) clearbank(sum+i);
+	sum *banks = NULL;
+	err e; e.S = 0; e.D = 0; e.C = 0; e.T = 0;
+	hash = (ll **)malloc(sizeof(ll *)*20);
+	banks = (sum *)malloc(sizeof(sum)*4);
+	for(i = 0; i < 20; i++) hash[i] = NULL;
 	while(!feof(stdin)){
 		clearll(&reader);
 		c = 0; f = 0;
@@ -144,26 +166,79 @@ int main(){
 		}
 		else
 			insertHASH(hash, &reader);
-		//printf("%d\t%3d\t%c\t%3d\t%8.2f\t%d\t%9p | %02d\n", reader.t, reader.b, reader.o, reader.d, reader.v, (int)reader.e, (void*)reader.n, hashmap(reader.o, reader.t));
 	}
-	printH(hash);
-	for(i = 1; i < 5; i++){
-		printf("===TERMINAL %d===\n", i);
-		accsum(hash, sum, i);
-		printf("Banco %d: Moeda +%.2f -%.2f Tranferencia +%.2f -%.2f\n", sum[i].id, sum[i].mp, sum[i].mn, sum[i].tp, sum[i].tn);
+	//printH(hash);
+	for(i = 0; i < 5; i++){
+		for(k = 0; k < 4; k++) clearsum(banks+k);
+		e.S = 0; e.D = 0; e.C = 0; e.T = 0;
+		if(i != 4)
+			printf("===TERMINAL %d===\n", i+1);
+		else
+			printf("===TOTAL===\n");
+		accsum(hash, banks, i * 5, &e);
+		for(j = 0; j < 4; j++){
+			if(banks[j].mp || banks[j].mn || banks[j].tp || banks[j].tn)
+				printf("Banco %d: Moeda +%.2f %.2f Tranferencia +%.2f %.2f\n", banks[j].id, banks[j].mp, banks[j].mn, banks[j].tp, banks[j].tn);
+		}
+		printf("Lucro obtido: %d.00\n", banks[0].qt*3);
+		if(e.S)
+			printf("Erros de saque: %d\n", e.S);
+		if(e.D)
+			printf("Erros de deposito: %d\n", e.D);
+		if(e.C)
+			printf("Erros de consulta: %d\n", e.C);
+		if(e.T)
+			printf("Erros de transferencia: %d\n", e.T);
+		if(e.S || e.D || e.C || e.T)
+			printf("Total de erros: %d\n", e.S + e.D + e.C + e.T);
 	}
-	free(hash);
+	freeHash(hash, banks);
 	return 0;
 }
 
-
-void accsum(ll **hash, bank *sum, int i){
-	int max = 5 * i + 5;
-	for(i = 5*i; i <= max; i++){
-		ll *aux = hash[i];
-		while(aux){
-			sum->mp += aux->
-			aux = aux->n;
+void accsum(ll **h, sum *b, int i, err *e){
+	int max  = i + 5, j = 0;
+	if(i == 20){
+		i = 0;
+		max = 20;
+	}
+	for(; i < max; i++){
+		if(i%5 != 4){
+			ll *a = h[i];
+			while(a){
+				if(!(a->e)){
+					for(j = 0; (b+j)->id && (b+j)->id != a->b; j++);
+					(b+j)->id = a->b;
+					if(i%5 == 0)
+						(b+j)->mn += a->v;
+					else if(i%5 == 1)
+						(b+j)->mp += a->v;
+					else if(i%5 == 3){
+						if(a->b != a->n->b){
+							(b+j)->tn += a->v;
+							a = a->n;
+							for(j = 0; (b+j)->id && (b+j)->id != a->b; j++);
+							(b+j)->id = a->b;
+							(b+j)->tp += a->v;
+						}
+						else
+							a = a->n;
+					}
+					++(b->qt);
+				}
+				else{
+					if(a->o == 'S')
+						(e->S)++;
+					else if(a->o == 'D')
+						(e->D)++;
+					else if(a->o == 'C')
+						(e->C)++;
+					else if(a->o == 'T')
+						(e->T)++;
+				}
+				a = a->n;
+			}
 		}
 	}
+	e->T = e->T/2;
 }
