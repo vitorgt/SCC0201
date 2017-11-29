@@ -1,8 +1,9 @@
-//114+113+51+138+80
+//114+113+51+138+80+101
 
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<math.h>
 
 typedef struct _ll{
 	int t, b, d;//terminal, banco, banco de destino
@@ -12,15 +13,13 @@ typedef struct _ll{
 }ll;
 
 typedef struct _s{
-	int id, qt;
+	int id, qt, au;
 	float mp, mn, tp, tn;
 }sum;
 
 typedef struct _e{
 	int S, D, C, T;
 }err;
-
-void accsum(ll **, sum *, int, err *);
 
 void clearll(ll *a){
 	a->t = 0;
@@ -35,6 +34,7 @@ void clearll(ll *a){
 void clearsum(sum *b){
 	b->id = 0;
 	b->qt = 0;
+	b->au = 0;
 	b->mp = 0;
 	b->mn = 0;
 	b->tp = 0;
@@ -94,6 +94,133 @@ void freeHash(ll **h, sum *bank){
 	free(bank);
 }
 
+void defbanks(ll **h, sum *b){
+	int bb[4], i = 0, j = 0;
+	ll *a = NULL;
+	for(i = 0; i < 4; i++)
+		bb[i] = 0;
+	for(i = 0; i < 20; i++){
+		a = h[i];
+		while(a){
+			for(j = 0; bb[j] && bb[j] != a->b && j < 4; j++);
+			if(i%5 != 4)
+				bb[j] = a->b;
+			a = a->n;
+		}
+	}
+	for(i = 0; i < 4; i++)
+		for(j = i; j < 4; j++)
+			if(bb[i] > bb[j]){
+				int temp = bb[i];
+				bb[i] = bb[j];
+				bb[j] = temp;
+			}
+	for(i = 0; i < 4; i++)
+		(b+i)->id = bb[i];
+}
+
+void accsum(ll **h, sum *b, int i, err *e){
+	int max  = i + 5, j = 0;
+	if(i == 20){
+		i = 0;
+		max = 20;
+	}
+	for(; i < max; i++){
+		if(i%5 != 4){
+			ll *a = h[i];
+			while(a){
+				if(!(a->e)){
+					for(j = 0; (b+j)->id != a->b && j < 4; j++);
+					if(i%5 == 0)
+						(b+j)->mn += a->v;
+					else if(i%5 == 1)
+						(b+j)->mp += a->v;
+					else if(i%5 == 3){
+						if(a->b != a->n->b){
+							(b+j)->tn += a->v;
+							a = a->n;
+							for(j = 0; (b+j)->id && (b+j)->id != a->b; j++);
+							(b+j)->id = a->b;
+							(b+j)->tp += a->v;
+						}
+						else
+							a = a->n;
+					}
+					++(b->qt);
+				}
+				else{
+					if(a->o == 'S')
+						(e->S)++;
+					else if(a->o == 'D')
+						(e->D)++;
+					else if(a->o == 'C')
+						(e->C)++;
+					else if(a->o == 'T')
+						(e->T)++;
+				}
+				a = a->n;
+			}
+		}
+		else
+			(b->au)++;
+	}
+	e->T = e->T/2;
+}
+
+void audit(ll **h){//a->d qtd, a->v op
+	int i = 0;
+	ll *a = h[4], *b = NULL;
+	if(a){
+		printf("===AUDITORIA===\n");
+		while(a){
+			if(a->v == 'S'){
+				printf("===SAQUE TERMINAL %d===\nMostrando primeiros %d resultados\n", a->b, a->d);
+				b = h[hashmap((char)a->v, a->b)];
+				if(b)
+					for(i = 0; b && i < a->d; i++){
+						if(!(b->e))
+							printf("%d- Banco %d %.2f\n", i+1, b->b, fabs(b->v));
+						else
+							i--;
+						b = b->n;
+					}
+				else
+					printf("Sem resultados\n");
+			}
+			else if(a->v == 'D'){
+				printf("===DEPOSITO TERMINAL %d===\nMostrando primeiros %d resultados\n", a->b, a->d);
+				b = h[hashmap((char)a->v, a->b)];
+				if(b)
+					for(i = 0; b && i < a->d; i++){
+						if(!(b->e))
+							printf("%d- Banco %d %.2f\n", i+1, b->b, fabs(b->v));
+						else
+							i--;
+						b = b->n;
+					}
+				else
+					printf("Sem resultados\n");
+			}
+			else if(a->v == 'T'){
+				printf("===TRANSFERENCIA TERMINAL %d===\nMostrando primeiros %d resultados\n", a->b, a->d);
+				b = h[hashmap((char)a->v, a->b)];
+				if(b)
+					for(i = 0; b && i < a->d; i++){
+						if(!(b->e))
+							printf("%d- Banco origem %d Banco destino %d %.2f\n", i+1, b->b, b->d, fabs(b->v));
+						else
+							i--;
+						b = b->n;
+						b = b->n;
+					}
+				else
+					printf("Sem resultados\n");
+			}
+			a = a->n;
+		}
+	}
+}
+
 int main(){
 	int i = 0, j = 0, k = 0;
 	char c = 0, buffer[100] = {0};
@@ -138,6 +265,8 @@ int main(){
 		else if(c == 'S' || c == 'D' || c == 'C' || c == 'T'){
 			reader.o = 'A';//ler teminal e char == AUDITORIA
 			reader.v = c;
+			reader.b = reader.t;
+			reader.t = 1;
 			scanf(" %d\n", &reader.d);
 		}
 		for(i = 0; (c = getchar()) && i < 100; i++){
@@ -171,6 +300,7 @@ int main(){
 	for(i = 0; i < 5; i++){
 		for(k = 0; k < 4; k++) clearsum(banks+k);
 		e.S = 0; e.D = 0; e.C = 0; e.T = 0;
+		defbanks(hash, banks);
 		if(i != 4)
 			printf("===TERMINAL %d===\n", i+1);
 		else
@@ -178,7 +308,7 @@ int main(){
 		accsum(hash, banks, i * 5, &e);
 		for(j = 0; j < 4; j++){
 			if(banks[j].mp || banks[j].mn || banks[j].tp || banks[j].tn)
-				printf("Banco %d: Moeda +%.2f %.2f Tranferencia +%.2f %.2f\n", banks[j].id, banks[j].mp, banks[j].mn, banks[j].tp, banks[j].tn);
+				printf("Banco %d: Moeda +%.2f -%.2f Transferencia +%.2f -%.2f\n", banks[j].id, banks[j].mp, fabs(banks[j].mn), banks[j].tp, fabs(banks[j].tn));
 		}
 		printf("Lucro obtido: %d.00\n", banks[0].qt*3);
 		if(e.S)
@@ -192,53 +322,9 @@ int main(){
 		if(e.S || e.D || e.C || e.T)
 			printf("Total de erros: %d\n", e.S + e.D + e.C + e.T);
 	}
+	if(banks[0].au){
+		audit(hash);
+	}
 	freeHash(hash, banks);
 	return 0;
-}
-
-void accsum(ll **h, sum *b, int i, err *e){
-	int max  = i + 5, j = 0;
-	if(i == 20){
-		i = 0;
-		max = 20;
-	}
-	for(; i < max; i++){
-		if(i%5 != 4){
-			ll *a = h[i];
-			while(a){
-				if(!(a->e)){
-					for(j = 0; (b+j)->id && (b+j)->id != a->b; j++);
-					(b+j)->id = a->b;
-					if(i%5 == 0)
-						(b+j)->mn += a->v;
-					else if(i%5 == 1)
-						(b+j)->mp += a->v;
-					else if(i%5 == 3){
-						if(a->b != a->n->b){
-							(b+j)->tn += a->v;
-							a = a->n;
-							for(j = 0; (b+j)->id && (b+j)->id != a->b; j++);
-							(b+j)->id = a->b;
-							(b+j)->tp += a->v;
-						}
-						else
-							a = a->n;
-					}
-					++(b->qt);
-				}
-				else{
-					if(a->o == 'S')
-						(e->S)++;
-					else if(a->o == 'D')
-						(e->D)++;
-					else if(a->o == 'C')
-						(e->C)++;
-					else if(a->o == 'T')
-						(e->T)++;
-				}
-				a = a->n;
-			}
-		}
-	}
-	e->T = e->T/2;
 }
